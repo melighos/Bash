@@ -1,0 +1,123 @@
+#!/bin/bash
+
+# flactomp3.sh v0.01
+# converts all flac files recursively found at $flacdir
+# and creates MP3s of them at mp3dir, following any
+# existing directory structure.
+#
+# Requirements
+# lame, flac.
+ 
+flacdir="/home/nanderson/fileshare/Music"
+mp3dir="/home/nanderson/fileshare/converted/"
+dbfilename="$HOME/.FlacMP3"
+
+
+function createmp3 {
+    avconv -i "$1" -ab 320k -map_metadata 0 "$2"
+}
+
+
+function getmd5 {
+  md5=`md5sum $1`
+  flacmd5=${md5%% $1}
+  flacmd5="${flacmd5/[/}"
+  flacmd5="${flacmd5/]/}"
+}
+
+
+function readmd5 {
+  md5=`cat "$dbfilename" | grep $1`
+  storedmd5="${md5%% $1}"
+  storedmd5="${storedmd5/[/}"
+  storedmd5="${storedmd5/]/}"
+}
+
+
+function storemd5 {
+  md5=`md5sum $1`
+
+
+  if [ ! "x$storedmd5" == "x" ] # x added as "" is not a valid input for a test
+  then
+    sed -i 's|'"$storedmd5*$flac"'||g' "$dbfilename"
+    cat "$dbfilename" | awk '$0!~/^$/ {print $0}' "$dbfilename" > "$dbfilename".tmp
+    mv "$dbfilename.tmp" "$dbfilename" # remove blank lines
+    # TODO: the sed statement above can break if there is more than one of the same entry!
+  fi
+  echo $md5 >> "$dbfilename"
+}
+
+
+function makedir {
+  if [ ! -d "$1" ]
+  then
+    mkdir -p "$1"
+  fi
+}
+
+
+# test to see if the flac md5 database exists: if not create it
+if [ ! -f "$dbfilename" ]
+then
+  touch "$dbfilename"
+fi
+
+
+# test to see if the mp3 directory exists: if not create it
+makedir "$mp3dir"
+
+
+# main loop - we go into directories, make sure the mp3
+# equivalent directory exists, create it if not, then
+# convert each file across.
+
+
+export IFS=$'\n'
+for flac in $(find "$flacdir" -type f)
+do
+
+
+  # check we're dealing with a .flac
+  if [ "${flac##/*.}" == "flac" ]
+  then
+
+
+  # check that the file does not have a matching entry in our md5 database
+  getmd5 "$flac"
+  readmd5 "$flac"
+
+
+  if [ ! "$storedmd5" == "$flacmd5" ]
+  then
+
+
+      # replace flac directory structure with mp3 directory structure
+      mp3="$mp3dir${flac#$flacdir}"
+      # replace .flac extension with .mp3 extension
+      mp3="${mp3%.flac}.mp3"
+  
+      # retrieve tags
+      metaflac --export-tags-to=- "$flac" | sed 's/=\(.*\)/="\1"/' > /tmp/flacmeta.tmp
+      . /tmp/flacmeta.tmp
+      rm /tmp/flacmeta.tmp
+  
+      # check target directory exists, creating it if necessary
+      targetdir="${mp3%/*.mp3}"
+      makedir "$targetdir"
+    
+      # convert flac to mp3, preserving tags
+      createmp3 "$flac" "$mp3"
+
+
+      # finally store the md5 in our database as we have
+      # created the mp3 successfully.
+      if [ $? == 0 ]
+      then
+    storemd5 "$flac"
+      fi
+    fi
+  fi
+done
+export IFS=" "
+

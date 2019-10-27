@@ -1,0 +1,204 @@
+If we set:
+a=apple      # a simple variable
+arr=(apple)  # an indexed array with a single element
+
+and then echo the expression in the second column, we would get the result / behavior shown in the third column. 
+The fourth column explains the behavior.
+
+ # | Expression  | Result      | Comments
+---+-------------+-------------+--------------------------------------------------------------------
+ 1 | "$a"        | apple       | variables are expanded inside ""
+ 2 | '$a'        | $a          | variables are not expanded inside ''
+ 3 | "'$a'"      | 'apple'     | '' has no special meaning inside ""
+ 4 | '"$a"'      | "$a"        | "" is treated literally inside ''
+ 5 | '\''        | **invalid** | can not escape a ' within ''; use "'" or $'\'' (ANSI-C quoting)
+ 6 | "red$arocks"| red         | $arocks does not expand $a; use ${a}rocks to preserve $a
+ 7 | "redapple$" | redapple$   | $ followed by no variable name evaluates to $
+ 8 | '\"'        | \"          | \ has no special meaning inside ''
+ 9 | "\'"        | \'          | \' is interpreted inside "" but has no significance for '
+10 | "\""        | "           | \" is interpreted inside ""
+11 | "*"         | *           | glob does not work inside "" or ''
+12 | "\t\n"      | \t\n        | \t and \n have no special meaning inside "" or ''; use ANSI-C quoting
+13 | "`echo hi`" | hi          | `` and $() are evaluated inside ""
+14 | '`echo hi`' | `echo hi`   | `` and $() are not evaluated inside ''
+15 | '${arr[0]}' | ${arr[0]}   | array access not possible inside ''
+16 | "${arr[0]}" | apple       | array access works inside ""
+17 | $'$a\''     | $a'         | single quotes can be escaped inside ANSI-C quoting
+18 | "$'\t'"     | $'\t'       | ANSI-C quoting is not interpreted inside ""
+19 | '!cmd'      | !cmd        | history expansion character '!' is ignored inside ''
+20 | "!cmd"      | cmd args    | expands to the most recent command matching "cmd"
+21 | $'!cmd'     | !cmd        | history expansion character '!' is ignored inside ANSI-C quotes
+---+-------------+-------------+--------------------------------------------------------------------
+# Bash File Testing
+-b filename - Block special file
+-c filename - Special character file
+-d directoryname - Check for directory Existence
+-e filename - Check for file existence, regardless of type (node, directory, socket, etc.)
+-f filename - Check for regular file existence not a directory
+-G filename - Check if file exists and is owned by effective group ID
+-G filename set-group-id - True if file exists and is set-group-id
+-k filename - Sticky bit
+-L filename - Symbolic link
+-O filename - True if file exists and is owned by the effective user id
+-r filename - Check if file is a readable
+-S filename - Check if file is socket
+-s filename - Check if file is nonzero size
+-u filename - Check if file set-user-id bit is set
+-w filename - Check if file is writable
+-x filename - Check if file is executable
+
+STDIN --> 0
+STDOUT --> 1
+STDERR --> 2
+
+command > file          # redirect output to a file
+command >> file         # append output to a file
+command < file          # take input from a file
+2>                      # redirect the STDERR
+2>&1                    # combine STDERR and STDOUT into the STDOUT
+command >file 2>&1      # proper way to combine and redirect STDERR and STDOUT to a file
+command 2&>1 >file      # actually will run 'command 2' with a redirection of &>1 (STDOUT and STDERR to file 1) 
+
+command1 && command2    # AND. command2 is executed only if, command1 returns an exit status of zero (success)
+command1 || command2    # OR. command2 is executed only if, command1 returns a non-zero exit status (failure)
+;                       # command separator,  execute all commands regardless of whether the previous ones failed or not
+
+!                       # operator to negated test expression
+$#                      # number of positional parameters in decimal.
+$?                      # exit status of the most recently executed foreground pipeline.
+$-                      # current option flags as specified upon invocation, by the set builtin command, or those set by the shell itself (such as the -i option).
+$$                      # process ID of the shell. In a () subshell, it expands to the process ID of the invoking shell, not the subshell.
+$!                      # process ID of the job most recently placed into the background
+$0                      # name of the shell or shell script
+
+$*                      # positional parameters, when the expansion is not within double quotes, each positional parameter expands to a separate word. 
+                        # In contexts where it is performed, those words are subject to further word splitting and pathname expansion.
+                        # When the expansion occurs within double quotes, it expands to a single word with the value of each parameter separated 
+                        # That is, "$*" is equivalent to "$1c$2c…", where c is the first character of the value of the IFS variable.
+
+$@                      # positional parameters, when the expansion occurs within double quotes, each parameter expands to a separate word.                   
+                        # "$@" is equivalent to "$1" "$2" …. If the double-quoted expansion occurs within a word, 
+                        # the expansion of the first parameter is joined with the beginning part of the original word, 
+                        # and the expansion of the last parameter is joined with the last part of the original word.
+
+$_                      # absolute pathname used to invoke the shell or shell script, 
+                        # also set to the full pathname used to invoke each command executed and placed in the environment exported to that command
+--------------------------------------------------------------------------------------------------
+printf                                                          # prints a formatted string to the standard output
+
+read -p "Enter a file extension: " extension                    # request user input
+
+trap 'rm $WORKDIR/work1$$ $WORKDIR/dataout$$; exit' 1 2         # work1$$ and dataout$$ will be automatically removed if signal number 1 and 2 is received
+---------------------------------------------------------------------------------------------------
+myPet="your_value" 												# variable assignment
+sed -ie "s/bird/${myPet}/g" statement.txt						# using variable in sed
+echo "$(/bin/date) - Checking in."                              # using variable
+------------------------------------------------------------------------------------------------------
+while <something is true>; do									# standard bash syntax for a 'while' loop
+    <run some commands>
+done
+
+list="$(ldd /bin/ls | egrep -o '/lib.*\.[0-9]')"                # 
+for i in $list; do cp  -v "$i" "${J}${i}"; done                 # 
+----------------------------------------------------------------------------------------------------
+file=./file                                                     # Check if a file exists:
+if [ -e "$file" ]; then
+    echo "File exists"
+else 
+    echo "File does not exist"
+fi 
+
+if [ -d "$DIRECTORY" ]; then                                    # Check if a directory exists
+  # Control will enter here if $DIRECTORY exists.
+fi
+
+if [ ! -d "$DIRECTORY" ]; then                                  # Check if a directory doesn't exist:
+  # Control will enter here if $DIRECTORY doesn't exist.
+fi
+
+if [ -d "$LINK_OR_DIR" ]; then                                  # Symbolic links may have to be treated differently, if subsequent commands expect directories
+  if [ -L "$LINK_OR_DIR" ]; then
+    # It is a symlink!
+    # Symbolic link specific commands go here.
+    rm "$LINK_OR_DIR"
+  else
+    # It's a directory!
+    # Directory command goes here.
+    rmdir "$LINK_OR_DIR"
+  fi
+fi
+--------------------------------------------------------------------------------------------------
+if (( $EUID != 0 )); then                       # check if running as root, using $EUID because $UID and root username could be changed
+  echo "Please run as root"
+  exit
+fi
+----------------------------------------------------------------------------------------------------
+while inotifywait -e close_write filename ; do  # run command every time a file is modified
+
+  echo "changed" >> /var/log/changed
+
+done
+------------------------------------------------------------------------------------------------------
+string='some text'                              # check if a string contains a substring
+if [[ $string = *"My long"* ]] ; then
+  true
+fi
+-----------------------------------------------------------------------------------------------
+while IFS='' read -r line || [[ -n "$line" ]] ; do  # read a file line by line and assigning the value to a variable
+  echo "Text read from file: $line"
+done < "/path/to/filename"
+--------------------------------------------------------------------------------------------------
+:(){ :|:& };:              # fork bomb, this bomb is a recursive function
+
+:()                        # Defines a function, ":". It takes no arguments.
+{ ... };                   # The body of the function.
+:                          # Invoke the function ":" that was just defined.
+
+kablammo() {               # Declaration
+  kablammo | kablammo&     # The problematic body.
+}; kablammo                # End function definition; invoke function.
+----------------------------------------------------------------------------------------
+echo "testing wait command1" &                          
+process_id=$!											# id of the first echo command is stored in $process_id variable
+echo "testing wait command2" &
+wait $process_id										# next command will wait for completing the task of the first echo command
+echo Job 1 exited with status $?						# ‘$?’ is used to read the status value of wait command
+wait $!													# wait command is used with ‘$!’, process id of the last running process
+echo Job 2 exited with status $?
+------------------------------------------
+echo "Testing wait command"                     # wait and sleep test and example
+sleep 20 &
+pid=$!
+kill $pid
+wait $pid
+echo $pid was terminated.
+--------------------------------------------------
+function check()                                # wait and sleep test and example
+{
+echo "Sleep for $1 seconds"
+sleep $1
+exit $2
+}
+check $1 $2 &
+b=$!
+echo "Checking the status"
+wait $b && echo OK || echo NOT OK
+--------------------------------------------------
+name='a.b.c.txt'                # way disconnect filename from file extension
+string1="${name%.*}"
+string2="${name##*.}"
+echo "$string1"
+a.b.c
+$ echo "$string2"
+txt
+---------------------------------------------------
+find . -name "*.wav" -print0 | while read -d $'\0' file; do ffmpeg -i "$file" -c:a libfdk_aac -vbr 3 output.m4a "${file%wav}m4a"; done
+-print0 - makes it separate the matches with a null character
+while - loop
+
+# The 'read' command is used to take the output of find and assign it to a variable, "file".
+# Normally this would assign values to "file" each word at a time, but the '-d $'\0'$' causes the assignments to be delimited by the null character
+# The 'while' loops causes 'read' to iteratively assign values to "file" for each matching filename.
+# 'do' and 'done' are part of the standard bash syntax for a 'while' loop
+----------------------------------------------------------------------------------------------------------
+
