@@ -1,14 +1,4 @@
-#!/bin/bash
-
-####
-# Creates files underneath /tmp
-# Requires commands: timeout  strace  stty
-####
-#
-# All commands are GNU unless otherwise stated
-#
-##########################################################
-
+Bash Examples:
 
 ####
 ## Initialization
@@ -113,3 +103,14 @@ fi
 
   # Cleanup
 rm -f $uniqueLinesFile $outputFile $finalResults
+---------------------------------------------------------------------------------
+# install a binary, but only if it doesn’t exist in your host
+# This installs the op binary to /usr/local/bin. If you re-run your script, it won’t install it anymore.
+# -x file and has execute permission
+if ! [ -x "$(command -v op)" ]; then
+  export OP_VERSION="v0.5.6-003"
+  curl -sS -o 1password.zip https://cache.agilebits.com/dist/1P/op/pkg/${OP_VERSION}/op_linux_amd64_${OP_VERSION}.zip
+  unzip 1password.zip op -d /usr/local/bin
+  rm -f 1password.zip
+fi
+

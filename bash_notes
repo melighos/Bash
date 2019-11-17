@@ -62,14 +62,17 @@ command 2&>1 >file      # actually will run 'command 2' with a redirection of &>
 command1 && command2    # AND. command2 is executed only if, command1 returns an exit status of zero (success)
 command1 || command2    # OR. command2 is executed only if, command1 returns a non-zero exit status (failure)
 ;                       # command separator,  execute all commands regardless of whether the previous ones failed or not
-
+:                       # Do nothing beyond expanding arguments and performing redirections. The return status is zero
 !                       # operator to negated test expression
-$#                      # number of positional parameters in decimal.
-$?                      # exit status of the most recently executed foreground pipeline.
-$-                      # current option flags as specified upon invocation, by the set builtin command, or those set by the shell itself (such as the -i option).
+
 $$                      # process ID of the shell. In a () subshell, it expands to the process ID of the invoking shell, not the subshell.
 $!                      # process ID of the job most recently placed into the background
-$0                      # name of the shell or shell script
+$?                      # exit status of the most recently executed foreground pipeline.
+
+$-                      # current option flags as specified upon invocation, by the set builtin command, or those set by the shell itself (such as the -i option).
+$#                      # number of args that our script was run with, number of positional parameters in decimal.
+$1..$n                  # actual script arguments
+$0                      # name of the shell or shell script, filename of our script.
 
 $*                      # positional parameters, when the expansion is not within double quotes, each positional parameter expands to a separate word. 
                         # In contexts where it is performed, those words are subject to further word splitting and pathname expansion.
@@ -90,19 +93,84 @@ read -p "Enter a file extension: " extension                    # request user i
 
 trap 'rm $WORKDIR/work1$$ $WORKDIR/dataout$$; exit' 1 2         # work1$$ and dataout$$ will be automatically removed if signal number 1 and 2 is received
 ---------------------------------------------------------------------------------------------------
-myPet="your_value" 												# variable assignment
-sed -ie "s/bird/${myPet}/g" statement.txt						# using variable in sed
-echo "$(/bin/date) - Checking in."                              # using variable
+myvar="your_value" 												# variable assignment
+some_number=$(ls $HOME | wc -l)                                 # variable assignment
+
+echo "this is my ${some_number}th number"                       # using variable
+
+sed -ie "s/bird/${myvar}/g" statement.txt						# using variable in sed
+
+echo "$(/bin/date) - Checking in."                              # using command variable
+
+echo "there are $(cat /etc/passwd | wc -l) lines in the /etc/passwd" # using command variable
 ------------------------------------------------------------------------------------------------------
 while <something is true>; do									# standard bash syntax for a 'while' loop
     <run some commands>
 done
 
-list="$(ldd /bin/ls | egrep -o '/lib.*\.[0-9]')"                # 
-for i in $list; do cp  -v "$i" "${J}${i}"; done                 # 
+exit 0                                                          # serve the predetermined exit code
+exit $?                                                         # serve exit code of the last run command
+-----------------------------------------------------------------------------------------------------
+ourfilename=$0                                                  # whats our filename?
+echo $ourfilename
+
+num_arguments=$#                                                # print arguments used upon script invocation
+echo "the first three arguments were ${1}, ${2}, and ${3}"
 ----------------------------------------------------------------------------------------------------
-file=./file                                                     # Check if a file exists:
-if [ -e "$file" ]; then
+if command ; then                                               # conditionally do something if a command succeeded or failed
+    echo "Command succeeded"
+else
+    echo "Command failed"
+fi
+
+if [[ condition ]]; then                                        # new test syntax. [...] for old, more portable test syntax
+	#statements
+fi
+
+if lsof "$filename" > /dev/null; then                           # you need a command between then and else, add an :, which is a null command
+  # file is open
+  :
+else
+  printf 'deleting %s\n' "$filename"
+  rm -- "$filename"
+fi
+------------------------------------------------------------------------------------------------------------------------
+my_var="var"                                                    # find out if a variable has NULL value OR not
+if [ -z "$my_var" ]
+then
+      echo "\$my_var is NULL"
+else
+      echo "\$my_var is NOT NULL"
+fi
+
+my_var=""                                                       
+if test -z "$my_var" 
+then
+      echo "\$my_var is NULL"
+else
+      echo "\$my_var is NOT NULL"
+fi
+
+var="$1"                                                        # find out if a variable has NULL value OR not
+if [ ! -n "$var" ]
+then
+	echo "$0 - Error \$var not set or NULL"
+else
+	echo "\$var set and now starting $0 shell script..."
+fi
+
+my_str="test"                                                   # find out if a variable has NULL value OR not
+if [[ ${my_str} ]]; then
+  echo " Has a value"
+else
+  echo "No value"
+fi
+--------------------------------------------------------------------------------------------------------
+if [ ! -f "/etc/conf/foo.txt" ]; then                            # Check if a file exists
+ echo "complex set of rules" > /etc/conf/foo.txt
+fi
+                                                    
+if [ -e "$file" ]; then                                          # Check if a file exists
     echo "File exists"
 else 
     echo "File does not exist"
@@ -127,11 +195,23 @@ if [ -d "$LINK_OR_DIR" ]; then                                  # Symbolic links
     rmdir "$LINK_OR_DIR"
   fi
 fi
+
+if ! mountpoint -q "$DATA_DIR"; then                            # see if the volume is already mounted, if mountpoint doesn’t exist, it’ll be mounted
+  mount -o discard,defaults,noatime "$VOLUME_NAME" "$DATA_DIR"  # 'mountpoint' command checks whether a file or directory is a mount point.
+fi                                                              # -q makes sure it doesn’t output anything and silently exits
 --------------------------------------------------------------------------------------------------
 if (( $EUID != 0 )); then                       # check if running as root, using $EUID because $UID and root username could be changed
   echo "Please run as root"
   exit
 fi
+-------------------------------------------------------------------------------------------------
+if ! grep -qF "/mnt/dev" /etc/fstab; then                               # make sure to check for certain placeholders via grep to not append duplicate line
+  echo "/dev/sda1 /mnt/dev ext4 defaults 0 0" | sudo tee -a /etc/fstab
+fi
+------------------------------------------------------------------------------------------------------
+files=$(ls -A)                              # inspect the exit code of the command
+if [[ $? != 0 ]]; then
+    echo "Command failed."
 ----------------------------------------------------------------------------------------------------
 while inotifywait -e close_write filename ; do  # run command every time a file is modified
 
@@ -143,6 +223,9 @@ string='some text'                              # check if a string contains a s
 if [[ $string = *"My long"* ]] ; then
   true
 fi
+-----------------------------------------------------------------------------------------------
+list="$(ldd /bin/ls | egrep -o '/lib.*\.[0-9]')"                # 
+for i in $list; do cp  -v "$i" "${J}${i}"; done                 # 
 -----------------------------------------------------------------------------------------------
 while IFS='' read -r line || [[ -n "$line" ]] ; do  # read a file line by line and assigning the value to a variable
   echo "Text read from file: $line"
