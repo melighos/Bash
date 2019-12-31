@@ -93,6 +93,15 @@ read -p "Enter a file extension: " extension                    # request user i
 
 trap 'rm $WORKDIR/work1$$ $WORKDIR/dataout$$; exit' 1 2         # work1$$ and dataout$$ will be automatically removed if signal number 1 and 2 is received
 ---------------------------------------------------------------------------------------------------
+exit 0                                                          # serve the predetermined exit code
+exit $?                                                         # serve exit code of the last run command
+-----------------------------------------------------------------------------------------------------
+ourfilename=$0                                                  # whats our filename?
+echo $ourfilename
+
+num_arguments=$#                                                # print arguments used upon script invocation
+echo "the first three arguments were ${1}, ${2}, and ${3}"
+----------------------------------------------------------------------------------------------------
 myvar="your_value" 												# variable assignment
 some_number=$(ls $HOME | wc -l)                                 # variable assignment
 
@@ -104,19 +113,124 @@ echo "$(/bin/date) - Checking in."                              # using command 
 
 echo "there are $(cat /etc/passwd | wc -l) lines in the /etc/passwd" # using command variable
 ------------------------------------------------------------------------------------------------------
-while <something is true>; do									# standard bash syntax for a 'while' loop
+source file1.sh                                   # import variables from other script or file
+
+#Determine when being sourced and end 'sourcing' at appropriate time
+#Separate script into two sections, exit from script when sourced before getting to lower second
+export var1="/data/share"
+export var2='password'    
+# --- End Definitions Section ---    
+# check if we are being sourced by another script or shell
+[[ "${#BASH_SOURCE[@]}" -gt "1" ]] && { return 0; }
+# --- Begin Code Execution Section ---
+echo "Hello"
+echo $var1
+echo $var2
+
+#create a function in the file that I want to source, and in that function determine what should be available to the caller
+export var1="/data/share"
+export var2='password'
+exportCfg() {
+  tmpF=$(mktemp)
+  declare -p var1 var2 > "$tmpF"
+  echo "$tmpF"
+}
+if [ "$1" == "export" ]; then
+  exportCfg;
+  exit 0;
+fi
+
+echo "Hello"
+echo $var1
+echo $var2
+------------------------------------------------------------------------------------------------------
+while <something is true>; do									    # standard bash syntax for a 'while' loop
     <run some commands>
 done
 
-exit 0                                                          # serve the predetermined exit code
-exit $?                                                         # serve exit code of the last run command
------------------------------------------------------------------------------------------------------
-ourfilename=$0                                                  # whats our filename?
-echo $ourfilename
+while true; do                                    # infinit loop
+    <run some commands>
+done
 
-num_arguments=$#                                                # print arguments used upon script invocation
-echo "the first three arguments were ${1}, ${2}, and ${3}"
-----------------------------------------------------------------------------------------------------
+while inotifywait -e close_write filename ; do    # run command every time a file is modified
+
+  echo "changed" >> /var/log/changed
+
+done
+
+for VARIABLE in 1 2 3 4 5 .. N                    # standard 'for' loop syntax
+do
+  command1
+  command2
+  commandN
+done
+
+for VARIABLE in file1 file2 file3
+do
+  command1 on $VARIABLE
+  command2
+  commandN
+done
+
+for OUTPUT in $(Linux-Or-Unix-Command-Here)
+do
+  command1 on $OUTPUT
+  command2 on $OUTPUT
+  commandN
+done
+
+for i in $(command); do                         # 'for' loop example
+      echo "${i}"
+  if [[ condition ]]; then
+      return 3
+  fi
+done
+
+## define an array ##
+arrayname=( Dell HP Oracle )
+ 
+## get item count using ${arrayname[@]} ##
+for m in "${arrayname[@]}"                          # iterate through one-dimensional array variables
+do
+  echo "${m}"
+  # do something on $m #
+done
+
+# three-expression bash for loops syntax
+START=1
+END=5
+echo "Countdown"
+ 
+for (( c=$START; c<=$END; c++ ))
+do
+  echo -n "$c "
+  sleep 1
+done
+ 
+echo
+echo "Boom!"
+----------------------------------------------------------------------------------------------
+function YourFunction(){                                                  # Defines a function
+        if [[ $(command) ]] &>/dev/null; then                             # run command and supress output redirecting it to /dev/null
+
+                return 0
+        else
+                return 1
+        fi
+}
+YourFunction                                                               # run function
+
+
+:(){ :|:& };:              # fork bomb, this bomb is a recursive function
+
+:()                        # Defines a function, ":". It takes no arguments.
+{ ... };                   # The body of the function.
+:                          # Invoke the function ":" that was just defined.
+
+kablammo() {               # Declaration
+  kablammo | kablammo&     # The problematic body.
+}; kablammo                # End function definition; invoke function.
+-----------------------------------------------------------------------------------------------------
 if command ; then                                               # conditionally do something if a command succeeded or failed
     echo "Command succeeded"
 else
@@ -125,6 +239,12 @@ fi
 
 if [[ condition ]]; then                                        # new test syntax. [...] for old, more portable test syntax
 	#statements
+fi
+
+if [[ condition1 ]] && [[ condition2 ]]; then
+    #commands
+elif [[ condition3 ]]; then
+    #commands
 fi
 
 if lsof "$filename" > /dev/null; then                           # you need a command between then and else, add an :, which is a null command
@@ -212,34 +332,15 @@ fi
 files=$(ls -A)                              # inspect the exit code of the command
 if [[ $? != 0 ]]; then
     echo "Command failed."
-----------------------------------------------------------------------------------------------------
-while inotifywait -e close_write filename ; do  # run command every time a file is modified
-
-  echo "changed" >> /var/log/changed
-
-done
 ------------------------------------------------------------------------------------------------------
 string='some text'                              # check if a string contains a substring
 if [[ $string = *"My long"* ]] ; then
   true
 fi
 -----------------------------------------------------------------------------------------------
-list="$(ldd /bin/ls | egrep -o '/lib.*\.[0-9]')"                # 
-for i in $list; do cp  -v "$i" "${J}${i}"; done                 # 
------------------------------------------------------------------------------------------------
 while IFS='' read -r line || [[ -n "$line" ]] ; do  # read a file line by line and assigning the value to a variable
   echo "Text read from file: $line"
 done < "/path/to/filename"
---------------------------------------------------------------------------------------------------
-:(){ :|:& };:              # fork bomb, this bomb is a recursive function
-
-:()                        # Defines a function, ":". It takes no arguments.
-{ ... };                   # The body of the function.
-:                          # Invoke the function ":" that was just defined.
-
-kablammo() {               # Declaration
-  kablammo | kablammo&     # The problematic body.
-}; kablammo                # End function definition; invoke function.
 ----------------------------------------------------------------------------------------
 echo "testing wait command1" &                          
 process_id=$!											# id of the first echo command is stored in $process_id variable
@@ -248,24 +349,6 @@ wait $process_id										# next command will wait for completing the task of th
 echo Job 1 exited with status $?						# ‘$?’ is used to read the status value of wait command
 wait $!													# wait command is used with ‘$!’, process id of the last running process
 echo Job 2 exited with status $?
-------------------------------------------
-echo "Testing wait command"                     # wait and sleep test and example
-sleep 20 &
-pid=$!
-kill $pid
-wait $pid
-echo $pid was terminated.
---------------------------------------------------
-function check()                                # wait and sleep test and example
-{
-echo "Sleep for $1 seconds"
-sleep $1
-exit $2
-}
-check $1 $2 &
-b=$!
-echo "Checking the status"
-wait $b && echo OK || echo NOT OK
 --------------------------------------------------
 name='a.b.c.txt'                # way disconnect filename from file extension
 string1="${name%.*}"
@@ -284,4 +367,151 @@ while - loop
 # The 'while' loops causes 'read' to iteratively assign values to "file" for each matching filename.
 # 'do' and 'done' are part of the standard bash syntax for a 'while' loop
 ----------------------------------------------------------------------------------------------------------
+#command-line options and arguments:
 
+while :; do
+     case $1 in
+        -h|-\?|--help)
+             show_help    # Display a usage synopsis.
+             exit 0
+            ;;
+        -option1)              # option 1
+            use_dev
+            exit 0
+            ;;
+        -option2)               # option 2
+            use_qa
+            exit 0
+          ;;
+        -option3)             # option 3
+            use_prod
+            exit 0
+          ;;
+        -*)
+             printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+             show_help
+             exit 1
+            ;;
+        *)               # Default case: No more options, so break out of the loop.
+            break
+    esac
+ 
+    shift
+done
+
+if [[ $# -eq 0 ]]; then           # show help if no arguments specified
+    show_help
+    exit 0 
+fi
+# End of file
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+==
+# Manual loop
+# Manually parsing options is the most flexible approach, and is sufficient for most scripts.
+
+# Initialize all the option variables.
+# This ensures we are not contaminated by variables from the environment.
+file=
+verbose=0
+
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            show_help    # Display a usage synopsis.
+            exit
+            ;;
+        -f|--file)       # Takes an option argument; ensure it has been specified.
+            if [ "$2" ]; then
+                file=$2
+                shift
+            else
+                die 'ERROR: "--file" requires a non-empty option argument.'
+            fi
+            ;;
+        --file=?*)
+            file=${1#*=} # Delete everything up to "=" and assign the remainder.
+            ;;
+        --file=)         # Handle the case of an empty --file=
+            die 'ERROR: "--file" requires a non-empty option argument.'
+            ;;
+        -v|--verbose)
+            verbose=$((verbose + 1))  # Each -v adds 1 to verbosity.
+            ;;
+        --)              # End of all options.
+            shift
+            break
+            ;;
+        -?*)
+            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+            ;;
+        *)               # Default case: No more options, so break out of the loop.
+            break
+    esac
+
+    shift
+done
+
+# if --file was provided, open it for writing, else duplicate stdout
+if [ "$file" ]; then
+    exec 3> "$file"
+else
+    exec 3>&1
+fi
+
+# Rest of the program here.
+# If there are input files (for example) that follow the options, they
+# will remain in the "$@" positional parameters.
+==
+# getopts
+# The only reason you would ever use getopts is to allow single-letter option combining (-xvf handled as -x -v -f).
+# It has no other purpose. The trade-off for this is that you cannot use long arguments of any kind (GNU-style "--foo" or Tcl-style "-foo"). 
+
+# Usage info
+show_help() {
+cat << EOF
+Usage: ${0##*/} [-hv] [-f OUTFILE] [FILE]...
+Do stuff with FILE and write the result to standard output. With no FILE
+or when FILE is -, read standard input.
+
+    -h          display this help and exit
+    -f OUTFILE  write the result to OUTFILE instead of standard output.
+    -v          verbose mode. Can be used multiple times for increased
+                verbosity.
+EOF
+}
+
+# Initialize our own variables:
+output_file=""
+verbose=0
+
+OPTIND=1
+# Resetting OPTIND is necessary if getopts was used previously in the script.
+# It is a good idea to make OPTIND local if you process options in a function.
+
+while getopts hvf: opt; do
+    case $opt in
+        h)
+            show_help
+            exit 0
+            ;;
+        v)  verbose=$((verbose+1))
+            ;;
+        f)  output_file=$OPTARG
+            ;;
+        *)
+            show_help >&2
+            exit 1
+            ;;
+    esac
+done
+shift "$((OPTIND-1))"   # Discard the options and sentinel --
+
+# Everything that's left in "$@" is a non-option.  In our case, a FILE to process.
+printf 'verbose=<%d>\noutput_file=<%s>\nLeftovers:\n' "$verbose" "$output_file"
+printf '<%s>\n' "$@"
+
+# End of file
