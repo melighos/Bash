@@ -57,7 +57,13 @@ command < file          # take input from a file
 2>                      # redirect the STDERR
 2>&1                    # combine STDERR and STDOUT into the STDOUT
 command >file 2>&1      # proper way to combine and redirect STDERR and STDOUT to a file
-command 2&>1 >file      # actually will run 'command 2' with a redirection of &>1 (STDOUT and STDERR to file 1) 
+command 2&>1 >file      # actually will run 'command 2' with a redirection of &>1 (STDOUT and STDERR to file 1)
+
+ERROR=$( { ./useless.sh | sed s/Output/Useless/ > outfile; } 2>&1 ) # build the entire pipeline into the sub-shell, sending its final standard output to a file, 
+                                                                    # so that you can redirect the errors to standard output
+ERROR=$(command 3>&1 1>&2 2>&3 | tee /dev/stderr)         # If you have longer running commands where you want to display stdout/stderr in realtime 
+ERROR=$(command 3>&1 1>&2 2>&3 | tee /proc/self/fd/2)     # and also store stderr in a variable. This can be achieved by switching stdout and stderr
+ERROR=$(command 3>&1 1>&2 2>&3 | tee >(cat - >&2))        # and then teeing the new stdout (which is stderr now) back to stderr for console output
 
 command1 && command2    # AND. command2 is executed only if, command1 returns an exit status of zero (success)
 command1 || command2    # OR. command2 is executed only if, command1 returns a non-zero exit status (failure)
@@ -92,6 +98,8 @@ printf                                                          # prints a forma
 read -p "Enter a file extension: " extension                    # request user input
 
 trap 'rm $WORKDIR/work1$$ $WORKDIR/dataout$$; exit' 1 2         # work1$$ and dataout$$ will be automatically removed if signal number 1 and 2 is received
+
+{ echo "Hello I'm a background task" & } 2>/dev/null            # run commmnd in a sub-shell or process group (i.e. { ... })
 ---------------------------------------------------------------------------------------------------
 exit 0                                                          # serve the predetermined exit code
 exit $?                                                         # serve exit code of the last run command
@@ -150,7 +158,74 @@ exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>log.out 2>&1
 
-# Everything below will go to the file 'log.out':
+# Everything below will go to the file 'log.out'
+----------------------------------------------------------------------------------------------
+# compare date values
+
+val1=$(date --date='2013-12-31T00:00:00' +%s)
+val2=$(date --date='2014-11-19T15:40:30' +%s)
+[ $val1 -gt $val2 ]
+echo $?
+1
+[ $val1 -lt $val2 ]
+echo $?
+0
+
+# compare two floating point numbers
+# bash handles only integer maths but you can use 'bc' command
+# to workaround incorrect calculations its needed to uppercase 'e' sign in scientific number notation and use -l flag to 'bc' for predefined math routines
+
+num1=3.17648E-22
+num2=1.5
+echo $num1'>'$num2 | bc -l
+0
+echo $num2'>'$num1 | bc -l
+1
+-------------------------------------------------------------------------------------------------
+#Arrays
+
+arr=("new_element" "${arr[@]}")                           # add an element to the beginning of an array
+arr=( "${arr[@]}" "new_element" )                         # add an element to the end of an array
+
+arr+=( "new_element" )                                                # add new element to an array, or
+arr=( "${arr[@]}" "new_element1" "new_element2" "..." "new_elementN") # Or
+arr+=( "new_element1" "new_element2" "..." "new_elementN" )
+
+arr=( "${arr[@]:0:2}" "new_element" "${arr[@]:2}" )       # add an element to specific index of an array
+arr=( "${arr[@]:0:2}" "${arr[@]:3}" )                     # Removing an element from the array
+# In addition to removing an element from an array (let's say element #3), we need to concatenate two sub-arrays. 
+# The first sub-array will hold the elements before element #3 and the second sub-array will contain the elements after element #3.
+
+del_element=3; arr=( "${arr[@]:0:$((del_element-1))}" "${arr[@]:$del_element}" ) # way to re-build the arr excluding element#3 (arr[2]) from that:
+unset -v 'arr[2]'     # Another possibility to remove an element, actually assign 'null' value to the element
+
+printf '%s\n' "${arr[@]}"     # Print the array
+
+read -r a b c <<<$(echo 1 2 3)    # Multiple variable assignment
+read -d "\n" v1 v2 <<<$(cmd)      # if the first variable contains a space
+
+a=( $(echo 2 4 6) ); echo ${a[0]} ${a[1]} ${a[2]}   # assign the values to an array
+---------------------------------------
+array=(a b c d e f g h)
+array[42]="i"
+unset array[2]
+unset array[3]
+declare -p array     # dump the array so we can see what it contains
+declare -a array='([0]="a" [1]="b" [4]="e" [5]="f" [6]="g" [7]="h" [42]="i")'
+echo ${#array[@]}
+7
+echo ${array[${#array[@]}]}
+h
+
+#Here's how to get the last index:
+end=(${!array[@]})   # put all the indices in an array
+end=${end[@]: -1}    # get the last one
+echo $end
+42
+
+#That illustrates how to get the last element of an array.
+echo ${array[@]: -1}
+i
 ---------------------------------------------------------------------------------------------------
 while <something is true>; do									    # standard bash syntax for a 'while' loop
     <run some commands>
@@ -294,7 +369,7 @@ else
   echo "No value"
 fi
 --------------------------------------------------------------------------------------------------------
-if [ ! -f "/etc/conf/foo.txt" ]; then                            # Check if a file exists
+if [ ! -f "/etc/conf/foo.txt" ]; then                            # Check if a file doesn't exists
  echo "complex set of rules" > /etc/conf/foo.txt
 fi
                                                     
